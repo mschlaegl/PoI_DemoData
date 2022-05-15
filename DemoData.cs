@@ -5,10 +5,11 @@
 public class Node<T>
 {
 	public T data;
-	public Node<T>? next;
+	public Node<T>? prev, next;
 
 	public Node(T data) {
 		this.data = data;
+		prev = null;
 		next = null;
 	}
 }
@@ -40,7 +41,9 @@ public class RingBuffer<T>
 		{
 			head = tail = cur = new Node<T>(data);
 		} else {
-			tail.next = new Node<T>(data);
+			Node<T> n = new Node<T>(data);
+			tail.next = n;
+			n.prev = tail;
 			tail = tail.next;
 		}
 
@@ -64,6 +67,17 @@ public class RingBuffer<T>
 		cur = cur.next;
 		if (cur == null)
 			cur = head;
+	}
+
+	// switch to the previous element (round-robin)
+	public void prev()
+	{
+		if (cur == null)
+			return;
+
+		cur = cur.prev;
+		if (cur == null)
+			cur = tail;
 	}
 }
 
@@ -219,6 +233,7 @@ public class DemoData : RingBuffer<DemoDataElem>
 
 		Console.WriteLine("size {0:D}", dd.getSize());
 
+		Console.WriteLine("access forwards");
 		for (int i=0; i<dd.getSize()*2; i++) {
 			for (int j=0; j<2; j++) {
 				DemoDataElem d = dd.getCur();
@@ -226,6 +241,18 @@ public class DemoData : RingBuffer<DemoDataElem>
 			}
 			Console.WriteLine("select next");
 			dd.next();
+		}
+
+		Console.WriteLine("access backwards");
+		Console.WriteLine("select prev");
+		dd.prev();
+		for (int i=0; i<dd.getSize()*2; i++) {
+			for (int j=0; j<2; j++) {
+				DemoDataElem d = dd.getCur();
+				Console.WriteLine("access#{0:D}: {1}", j, d);
+			}
+			Console.WriteLine("select prev");
+			dd.prev();
 		}
 	}
 }
