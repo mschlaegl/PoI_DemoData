@@ -79,6 +79,14 @@ public class RingBuffer<T>
 		if (cur == null)
 			cur = tail;
 	}
+
+	// switch to element with index (round-robin)
+	public void select(int idx)
+	{
+		cur = head;
+		for (int i = 0; i<idx ; i++)
+			next();
+	}
 }
 
 
@@ -253,6 +261,16 @@ public class DemoData : RingBuffer<DemoDataElem>
 			}
 			Console.WriteLine("select prev");
 			dd.prev();
+		}
+
+		Console.WriteLine("access selective");
+		for (int i=0; i<dd.getSize()*2; i++) {
+			Console.WriteLine("select {0:D}", i);
+			dd.select(i);
+			for (int j=0; j<2; j++) {
+				DemoDataElem d = dd.getCur();
+				Console.WriteLine("access#{0:D}: {1}", j, d);
+			}
 		}
 	}
 }
