@@ -100,18 +100,25 @@ public enum Weather { Sun, Rain };
 
 public class ArousalValence
 {
-	public int a; /* -10 .. -10 */
-	public int v; /* -10 .. +10 */
+	public double a; /* -1.0 .. 1.0 */
+	public double v; /* -1.0 .. 1.0 */
 
-	public ArousalValence(int a, int v)
+	public ArousalValence(double a, double v)
 	{
 		this.a = a;
 		this.v = v;
 	}
 
+	public double getAbsVectorValue()
+	{
+		return Math.Sqrt(a*a+v*v);
+	}
+
 	public override string ToString()
 	{
-		return "(arousal=" + a + ", valence=" + v + ")";
+		return "(arousal=" + a + ", valence=" + v +
+			", abs=" + string.Format("{0:N2}", getAbsVectorValue()) +
+			")";
 	}
 }
 
@@ -122,64 +129,34 @@ public class DemoDataElem
 	public DayOfWeek dayOfWeek;
 	public TimeOfDay timeOfDay;
 	public Weather weather;
-	public ArousalValence news;
-	public ArousalValence social;
-	public ArousalValence dm; /* direct message */
-	public int soundLevel; /* simplified to percent */
-	public int heartbeat; /* bpm (0 .. no signal) */
+	public ArousalValence context; /* dayOfWeek, timeOfDay, weather, news */
+	public ArousalValence direct; /* DM, social media */
+	public int nTouches;
 
 	public DemoDataElem(
 			int id,
 			DayOfWeek dayOfWeek, TimeOfDay timeOfDay, Weather weather,
-			ArousalValence news, ArousalValence social, ArousalValence dm,
-			int soundLevel, int heartbeat)
+			ArousalValence context, ArousalValence direct,
+			int nTouches)
 	{
 		this.id = id;
 		this.dayOfWeek = dayOfWeek;
 		this.timeOfDay = timeOfDay;
 		this.weather = weather;
-		this.news = news;
-		this.social = social;
-		this.dm = dm;
-		this.soundLevel = soundLevel;
-		this.heartbeat = heartbeat;
+		this.context = context;
+		this.direct = direct;
+		this.nTouches = nTouches;
 	}
 
-
-	// some preprocessing experiments
-
-	// preprocessing 1 (Carson)
-	// Context(Weather/Daytime/News) and Direct(Social/DMs/Sound/Heartbeat)
 	public ArousalValence getContext()
 	{
-		ArousalValence av = new ArousalValence(0,0);
-
-		if (weather == Weather.Sun)
-			av.v+=5;
-		else if (weather == Weather.Rain)
-			av.v-=5;
-
-		if (timeOfDay == TimeOfDay.Day)
-			av.a+=5;
-		else if (timeOfDay == TimeOfDay.Night)
-			av.a-=5;
-
-		av.a = (av.a + news.a)/2;
-		av.v = (av.v + news.v)/2;
-
-		return av;
+		return context;
 	}
 
 	public ArousalValence getDirect()
 	{
-		ArousalValence av = new ArousalValence(0,0);
-		av.a = (av.a + social.a + dm.a + (soundLevel/10) + ((heartbeat-80)/10))/5;
-		av.v = (av.v + social.v + dm.v)/3;
-		return av;
+		return direct;
 	}
-
-
-
 
 	public override string ToString()
 	{
@@ -188,12 +165,9 @@ public class DemoDataElem
 			" dayOfWeek=" + dayOfWeek +
 			" timeOfDay=" + timeOfDay +
 			" weather=" + weather +
-			" news=" + news +
-			" social=" + social +
-			" directmessage=" + dm +
-			" soundLevel=" + soundLevel +
-			" hearbeat=" + heartbeat +
-			" Carson(context=" + getContext() + ", direct=" + getDirect() + ")" +
+			" context=" + getContext() +
+			" direct=" + getDirect() +
+			" nTouches=" + nTouches +
 			")";
 	}
 
@@ -205,31 +179,16 @@ public class DemoData : RingBuffer<DemoDataElem>
 
 	public static DemoData create()
 	{
-		int id = 0;
 		DemoData dd = new DemoData();
 
-		/*                      id      Day of Week           Time of Day      Weather             News                        Social                   Direct Message           soundlevel   heartbeat    */
-		dd.add(new DemoDataElem(id++, DayOfWeek.Monday,      TimeOfDay.Day,   Weather.Rain,    new ArousalValence(-1, -5), new ArousalValence( 3,-3), new ArousalValence(-3,-4),     80,          80      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Monday,      TimeOfDay.Day,   Weather.Sun,     new ArousalValence(-1, -5), new ArousalValence( 5,-1), new ArousalValence(-3,-4),     70,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Monday,      TimeOfDay.Night, Weather.Sun,     new ArousalValence( 1, -7), new ArousalValence( 5,-1), new ArousalValence( 0, 0),     10,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Tuesday,     TimeOfDay.Day,   Weather.Sun,     new ArousalValence( 1, -7), new ArousalValence( 4,-2), new ArousalValence( 0, 0),     70,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Tuesday,     TimeOfDay.Day,   Weather.Sun,     new ArousalValence( 3, -3), new ArousalValence( 4,-2), new ArousalValence( 3,-1),     50,          60      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Tuesday,     TimeOfDay.Night, Weather.Rain,    new ArousalValence( 3, -3), new ArousalValence( 4, 2), new ArousalValence( 3,-1),     10,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Wednesday,   TimeOfDay.Day,   Weather.Rain,    new ArousalValence( 1, -2), new ArousalValence( 4, 2), new ArousalValence( 0, 0),     60,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Wednesday,   TimeOfDay.Day,   Weather.Rain,    new ArousalValence( 1, -2), new ArousalValence(-1,-6), new ArousalValence( 0, 0),     60,          90      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Wednesday,   TimeOfDay.Night, Weather.Rain,    new ArousalValence( 5, -8), new ArousalValence(-1,-6), new ArousalValence( 7,-3),     20,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Thursday,    TimeOfDay.Day,   Weather.Sun,     new ArousalValence( 5, -8), new ArousalValence(-3, 0), new ArousalValence( 7,-3),     70,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Thursday,    TimeOfDay.Day,   Weather.Sun,     new ArousalValence( 5,  6), new ArousalValence(-3, 0), new ArousalValence( 7, 8),     50,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Thursday,    TimeOfDay.Night, Weather.Sun,     new ArousalValence( 5,  6), new ArousalValence( 6, 7), new ArousalValence( 7, 8),     20,         120      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Friday,      TimeOfDay.Day,   Weather.Sun,     new ArousalValence(-3,  1), new ArousalValence( 6, 7), new ArousalValence( 0, 0),     80,         140      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Friday,      TimeOfDay.Day,   Weather.Sun,     new ArousalValence(-3,  1), new ArousalValence( 6, 1), new ArousalValence( 0, 0),     20,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Friday,      TimeOfDay.Night, Weather.Rain,    new ArousalValence(-1, -3), new ArousalValence( 6, 1), new ArousalValence( 1, 1),     30,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Saturday,    TimeOfDay.Day,   Weather.Rain,    new ArousalValence(-1, -3), new ArousalValence( 2, 4), new ArousalValence( 1, 1),     40,          80      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Saturday,    TimeOfDay.Day,   Weather.Sun,     new ArousalValence( 1, -8), new ArousalValence( 2, 4), new ArousalValence( 2,-5),     50,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Saturday,    TimeOfDay.Night, Weather.Sun,     new ArousalValence( 1, -8), new ArousalValence( 1, 7), new ArousalValence( 2,-5),     50,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Sunday,      TimeOfDay.Day,   Weather.Sun,     new ArousalValence( 1, -1), new ArousalValence( 1, 7), new ArousalValence( 0, 0),     10,           0      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Sunday,      TimeOfDay.Day,   Weather.Rain,    new ArousalValence( 1, -1), new ArousalValence( 5, 2), new ArousalValence( 0, 7),     20,          90      ));
-		dd.add(new DemoDataElem(id++, DayOfWeek.Sunday,      TimeOfDay.Night, Weather.Rain,    new ArousalValence(-2,  1), new ArousalValence( 5, 2), new ArousalValence( 0, 7),     10,           0      ));
+		/*                      id    Day of Week           Time of Day      Weather       Context         (  a     v )     Direct          (  a     v )   #Touches   */
+		dd.add(new DemoDataElem(0,  DayOfWeek.Monday,     TimeOfDay.Day,   Weather.Sun,  new ArousalValence( 0.0,  0.0),  new ArousalValence( 0.0,  0.0),      0     )); /* neutral/disabled */
+
+		dd.add(new DemoDataElem(1,  DayOfWeek.Monday,     TimeOfDay.Day,   Weather.Rain, new ArousalValence(-0.2, -0.9),  new ArousalValence( 0.2,  0.2),      0     ));
+		dd.add(new DemoDataElem(2,  DayOfWeek.Sunday,     TimeOfDay.Night, Weather.Sun,  new ArousalValence(-0.3,  0.5),  new ArousalValence(-0.2, -0.8),      0     ));
+		dd.add(new DemoDataElem(3,  DayOfWeek.Saturday,   TimeOfDay.Day,   Weather.Sun,  new ArousalValence( 0.8,  0.8),  new ArousalValence( 0.8, -0.8),     25     ));
+		dd.add(new DemoDataElem(4,  DayOfWeek.Wednesday,  TimeOfDay.Day,   Weather.Sun,  new ArousalValence(-0.1,  0.1),  new ArousalValence( 0.1,  0.1),      2     ));
+		dd.add(new DemoDataElem(5,  DayOfWeek.Friday,     TimeOfDay.Night, Weather.Sun,  new ArousalValence( 1.0,  1.0),  new ArousalValence( 1.0,  1.0),     10     ));
 
 		return dd;
 	}
